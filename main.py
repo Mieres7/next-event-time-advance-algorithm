@@ -7,10 +7,8 @@ from Server import Server
 
 
 def exponentialVariate(a):
-    u = numpy.random.uniform(low=0.0, high=1.0)
-    return -(1/a)*numpy.log(1-u)
-
-
+    u = numpy.random.uniform()
+    return -numpy.log(1-u)/a
 
 def main():
     # Definir los valores por defecto
@@ -29,32 +27,61 @@ def main():
         elif opt in ("-t", "--end-time"):
             end_time = int(arg)
 
-
-    print(arrival_rate)
-
     server = Server()
     fel = FEL()
 
     # inital state 
     arrival_0 = Event("A", arrival_rate)
     arrival_0.arrivalTime = exponentialVariate(arrival_rate)
-    arrival_0.serviceTime = exponentialVariate(service_rate)
+    # arrival_0.serviceTime = exponentialVariate(service_rate)
     fel.pushEvent(arrival_0)
-    endEvent = Event("E", end_time)
-    fel.pushEvent(endEvent)
 
-    while(server.time <= endEvent.arrivalTime):
+    endEvent = Event("E", end_time)
+    
+
+    while(server.time < endEvent.arrivalTime):
         
         event = fel.popEvent()
+        print(event)
+        # print(server.time)
+        
         if(event.eType == "A"):
+            
+            
             server.arrivals += 1
             if(server.busy):
+                
+                # fel.pushEvent(event)
+                if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
+            else: 
+                server.busy = True
+                serviceTime = exponentialVariate(service_rate)
+                departure = Event("D", server.time + serviceTime)
+                fel.pushEvent(departure)
+                if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
 
-
+            interArrivalTime = exponentialVariate(arrival_rate)
+            arrival = Event("A", server.time + interArrivalTime)
+            fel.pushEvent(arrival)
+            if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
 
         elif(event.eType == "D"):
+            # server.time += event.arrivalTime
             server.departures += 1
-            print(4)
+            if(len(fel.eventList) > 0):
+                serviceTime = exponentialVariate(service_rate)
+                departure = Event("D", server.time + serviceTime)
+            else: 
+                server.busy = False
+        
+        server.time += event.arrivalTime
+                
+    # print(server.arrivals)
+    # print(server.departures)
+    print("olamklefur")
+    print(server.time)
+    # print(fel.maxLength)
+
 
 
     '''
@@ -65,16 +92,6 @@ def main():
     largo maximo de la cola -> stat de la fel
     tiempo total de la cola con largo maixmo -> suma de todos los tiempos de la cola creo
     '''
-
-    
-    
-
-
-
-
-
-    
-
 
 if __name__ == "__main__":
     main()
