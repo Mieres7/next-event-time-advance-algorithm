@@ -5,8 +5,7 @@ class FEL:
     def __init__(self):
         self.eventList = []
         self.maxLength = 0
-        self.emptyTime = 0  # este nose si está bien aqui
-        self.lenght = 0
+        self.lenght = 0 # initialize in 0 even when the end event is in it
 
     def pushEvent(self, event):
         self.lenght += 1
