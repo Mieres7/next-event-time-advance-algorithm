@@ -1,16 +1,19 @@
+
 import getopt
 import sys
-import numpy
+import numpy as np
 from FEL import FEL
 from Event import Event
 from Server import Server
 
 
 def exponentialVariate(a):
-    u = numpy.random.uniform()
-    return -numpy.log(1-u)/a
+    u = np.random.uniform()
+    return -np.log(1-u)/a
 
 def main():
+    np.random.seed(0)
+
     # Definir los valores por defecto
     arrival_rate = None
     service_rate = None
@@ -27,71 +30,89 @@ def main():
         elif opt in ("-t", "--end-time"):
             end_time = int(arg)
 
+
     server = Server()
     fel = FEL()
 
+
     # inital state 
-    arrival_0 = Event("A", arrival_rate)
-    arrival_0.arrivalTime = exponentialVariate(arrival_rate)
-    # arrival_0.serviceTime = exponentialVariate(service_rate)
-    fel.pushEvent(arrival_0)
+    firstArrivalTime = exponentialVariate(arrival_rate)
+    firstServiceTime = exponentialVariate(service_rate)
+    firstEvent = Event("A", firstArrivalTime, firstServiceTime)
+    fel.pushEvent(firstEvent)
 
-    endEvent = Event("E", end_time)
-    
+    endEvent = Event("E", end_time, 0)
+    fel.pushEvent(endEvent)
 
-    while(server.time < endEvent.arrivalTime):
+    # Metrics
+    lastEventTime = 0
+    totalEmptyQeueTime = 0
+
+    Q_k = {}
+
+    while server.time < endEvent.arrivalTime:
+
+        currentEvent = fel.popEvent()
+        server.time = currentEvent.arrivalTime
         
-        event = fel.popEvent()
-        print(event)
-        # print(server.time)
-        
-        if(event.eType == "A"):
-            
-            
+        if fel.lenght in Q_k:
+            Q_k[fel.lenght] += server.time - lastEventTime
+        else:
+            Q_k[fel.lenght] = server.time - lastEventTime
+
+        if currentEvent.eType == "A":
             server.arrivals += 1
-            if(server.busy):
-                
-                # fel.pushEvent(event)
-                if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
-            else: 
+
+            if not server.busy:
                 server.busy = True
                 serviceTime = exponentialVariate(service_rate)
-                departure = Event("D", server.time + serviceTime)
+                departureTime = server.time + serviceTime
+                departure = Event("D", departureTime, serviceTime)
                 fel.pushEvent(departure)
-                if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
+            else:
+                fel.lenght += 1
 
             interArrivalTime = exponentialVariate(arrival_rate)
-            arrival = Event("A", server.time + interArrivalTime)
-            fel.pushEvent(arrival)
-            if len(fel.eventList) > fel.maxLength : fel.maxLength = len(fel.eventList)
+            serviceTime = exponentialVariate(arrival_rate)
+            nextArrivalEvent = Event("A", server.time + interArrivalTime, serviceTime)
+            fel.pushEvent(nextArrivalEvent)
 
-        elif(event.eType == "D"):
-            # server.time += event.arrivalTime
+        elif currentEvent.eType == "D":
             server.departures += 1
-            if(len(fel.eventList) > 0):
+
+            if fel.lenght > 0:
+                fel.lenght -= 1
                 serviceTime = exponentialVariate(service_rate)
-                departure = Event("D", server.time + serviceTime)
+                departureTime = server.time + serviceTime
+                departureEvent = Event("D", departureTime, serviceTime)
+                fel.pushEvent(departureEvent)
             else: 
                 server.busy = False
+
+            lastEventTime = server.time
+            
+
+        elif currentEvent.eType == "E": 
+            break
+            
         
-        server.time += event.arrivalTime
+        
                 
-    # print(server.arrivals)
-    # print(server.departures)
-    print("olamklefur")
-    print(server.time)
-    # print(fel.maxLength)
+    print(f"Simulación terminada en el tiempo {server.time}")
+   
 
-
-
-    '''
-    stats que necesito:
-    jobs arrived -> server
-    jobs departured -> server
-    tiempo total de la cola vacia ->
-    largo maximo de la cola -> stat de la fel
-    tiempo total de la cola con largo maixmo -> suma de todos los tiempos de la cola creo
-    '''
+    print(f"Número de jobs que llegaron: {server.arrivals}")
+    print(f"Número de jobs que salieron: {server.departures}")
+    print(f"Tiempo total de la cola vacia: {Q_k[0]}")
+    print(f"Largo máximo de la cola: {fel.maxLength}")
+    print(f"Tiempo total de la cola con largo máximo: {Q_k[fel.maxLength - 1]}")
+    print(f"Utilización computada: ")
+    print(f"Utilización teórica: ")
+    print(f"Largo promedio computado de la cola: ")
+    print(f"Largo promedio teórico de la cola: ")
+    print(f"Tiempo promedio computado de residencia: ")
+    print(f"Tiempo promedio teórico de residencia: ")
+    
 
 if __name__ == "__main__":
     main()

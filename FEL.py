@@ -11,6 +11,8 @@ class FEL:
     def pushEvent(self, event):
         self.lenght += 1
         heapq.heappush(self.eventList, event)
+        if self.lenght > self.maxLength: self.maxLength = self.lenght
+            
 
     def popEvent(self):
         self.lenght -= 1
