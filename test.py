@@ -1,4 +1,3 @@
-
 import getopt
 import sys
 import numpy as np
@@ -7,29 +6,18 @@ from Event import Event
 from Server import Server
 
 def Q_T(Q_k, N):
-    sum = 0
-    for q in range(N+1):
-        sum += Q_k.get(q,0)
-    return sum
+    return sum(Q_k.get(q, 0) for q in range(N + 1))
 
 def felPromLenght(Q_t, Q_k):
-    sum = 0
-    for k in Q_k:
-        sum += k * Q_k.get(k,0)
-    return 1/Q_t * sum
+    return sum(k * Q_k.get(k, 0) for k in Q_k) / Q_t
 
 def residencePromTime(S_k, departures):
-    sum = 0
-    for k in S_k:
-        sum += S_k[k]
-    return 1/departures * sum
+    return sum(S_k[k] for k in S_k) / departures
 
-def exponentialVariate(a):
-    u = np.random.uniform()
-    return -np.log(1-u)/a
+def exponentialVariate(rate):
+    return -np.log(np.random.uniform()) * 1/ rate
 
 def main():
-
     np.random.seed(0)
 
     arrival_rate = None
@@ -46,15 +34,12 @@ def main():
         elif opt in ("-t", "--end-time"):
             end_time = float(arg)
 
-
     server = Server()
     fel = FEL()
 
-
-    # inital state 
-    # firstArrivalTime = exponentialVariate(arrival_rate)
-    # firstServiceTime = exponentialVariate(service_rate)
-    firstEvent = Event("A", 0, 0)
+    # Initial state
+    firstArrivalTime = exponentialVariate(arrival_rate)
+    firstEvent = Event("A", firstArrivalTime, 0)
     fel.pushEvent(firstEvent)
 
     endEvent = Event("E", end_time, 0)
@@ -62,22 +47,16 @@ def main():
 
     # Metrics
     lastEventTime = 0
-
     Q_k = {}
-
     arrivalTimes = {}
     S_k = {}
     job_id = 0
 
-    while True:
-        
-        for e in fel.eventList:
-            print(e.arrivalTime)
-        print("---")
+    while server.time < endEvent.arrivalTime:
 
         currentEvent = fel.popEvent()
         server.time = currentEvent.arrivalTime
-        
+
         if fel.lenght in Q_k:
             Q_k[fel.lenght] += server.time - lastEventTime
         else:
@@ -85,7 +64,6 @@ def main():
 
         if currentEvent.eType == "A":
             server.arrivals += 1
-            
             arrivalTimes[job_id] = server.time
 
             if not server.busy:
@@ -98,7 +76,6 @@ def main():
                 fel.lenght += 1
 
             interArrivalTime = exponentialVariate(arrival_rate)
-            # serviceTime = exponentialVariate(arrival_rate)
             nextArrivalEvent = Event("A", server.time + interArrivalTime, 0)
             nextArrivalEvent.job_id = job_id
             fel.pushEvent(nextArrivalEvent)
@@ -119,31 +96,21 @@ def main():
             else: 
                 server.busy = False
 
-            lastEventTime = server.time
-            
+        lastEventTime = server.time
 
-        elif currentEvent.eType == "E": 
-            break
-            
     Q_t = Q_T(Q_k, fel.maxLength)
     promLenght = felPromLenght(Q_t, Q_k)
     promResidenceTime = residencePromTime(S_k, server.departures)
-                
-    print(f"Simulación terminada en el tiempo {server.time}")
-   
 
+    print(f"Simulación terminada en el tiempo {server.time}")
     print(f"Número de jobs que llegaron: {server.arrivals}")
     print(f"Número de jobs que salieron: {server.departures}")
     print(f"Tiempo total de la cola vacia: {Q_k[0]}")
     print(f"Largo máximo de la cola: {fel.maxLength}")
-    print(f"Tiempo total de la cola con largo máximo: {Q_k[fel.maxLength - 1]}")
-    print(f"Utilización computada: {1 - Q_k[0]/Q_t}")
-    print(f"Utilización teórica: ")
+    print(f"Tiempo total de la cola con largo máximo: {Q_k.get(fel.maxLength - 1, 0)}")
+    print(f"Utilización computada: {1 - Q_k.get(0, 0)/Q_t}")
     print(f"Largo promedio computado de la cola: {promLenght}")
-    print(f"Largo promedio teórico de la cola: ")
     print(f"Tiempo promedio computado de residencia: {promResidenceTime}")
-    print(f"Tiempo promedio teórico de residencia: ")
-    
 
 if __name__ == "__main__":
     main()
