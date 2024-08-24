@@ -1,3 +1,7 @@
+# Members: Vicente Mieres S.
+# Rut: 21.082.122 - 8
+# 24/08/2024
+
 import getopt
 import sys
 import numpy as np
