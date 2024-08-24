@@ -16,8 +16,7 @@ def theoricalAverageLenght(arrivalRate, serviceRate):
 
 def main():
 
-    # generates random seed for testing
-    # np.random.seed(0) 
+    # np.random.seed(0)
 
     arrival_rate = None
     service_rate = None
@@ -44,79 +43,86 @@ def main():
 
     # Metrics
     timeQueueEmpty = 0.0
-    lasEventTime = 0.0
+    lastEventTime = 0.0
     Q_k = {}
     arrivalTimes = {}
     totalResidenceTime = 0.0
-
+    serviceStartTime = {}
 
     while server.time < endEvent.arrivalTime:
 
         currentEvent = fel.popEvent()
         server.time = currentEvent.arrivalTime
 
-        
         # Computes time where tail was empty before that event
         if fel.length == 0:
-            timeQueueEmpty += server.time - lasEventTime
+            timeQueueEmpty += server.time - lastEventTime
 
-        # Save times at their respective lenght k 
+        # Save times at their respective length k 
         if fel.length in Q_k:
-            Q_k[fel.length] += server.time - lasEventTime
+            Q_k[fel.length] += server.time - lastEventTime
         else:
-            Q_k[fel.length] = server.time - lasEventTime
+            Q_k[fel.length] = server.time - lastEventTime
 
         if currentEvent.eType == "A":
             server.arrivals += 1
-            arrivalTimes[server.arrivals] = server.time
+            job_id = server.arrivals
+            arrivalTimes[job_id] = server.time
 
             if not server.busy:
                 server.busy = True
                 serviceTime = exponentialVariate(service_rate)
                 departureTime = server.time + serviceTime
                 departure = Event("D", departureTime, serviceTime)
-                departure.job_id = server.arrivals # saves job id to identificate them later on Q_k
+                departure.job_id = job_id
                 fel.pushEvent(departure)
+                serviceStartTime[job_id] = server.time
             else:
                 fel.length += 1
                 
             interArrivalTime = exponentialVariate(arrival_rate)
             nextArrivalEvent = Event("A", server.time + interArrivalTime, 0)
-            nextArrivalEvent.job_id = server.arrivals
+            nextArrivalEvent.job_id = job_id
             fel.pushEvent(nextArrivalEvent)
 
         elif currentEvent.eType == "D":
             server.departures += 1
-
+            job_id = currentEvent.job_id
 
             # Calculate the residence time
-            job_id = currentEvent.job_id
-            if job_id in arrivalTimes:
-                residenceTime = server.time - arrivalTimes[job_id]
+            if job_id in arrivalTimes and job_id in serviceStartTime:
+                arrivalTime = arrivalTimes[job_id]
+                startServiceTime = serviceStartTime[job_id]
+                serviceTime = currentEvent.serviceTime
+                
+                waitTime = startServiceTime - arrivalTime  # d_i
+                residenceTime = waitTime + serviceTime  # w_i = d_i + s_i
                 totalResidenceTime += residenceTime
 
             if fel.length > 0:
                 fel.length -= 1
                 serviceTime = exponentialVariate(service_rate)
+                nextJob_id = server.arrivals - fel.length
                 departureEvent = Event("D", server.time + serviceTime, serviceTime)
-                departureEvent.job_id = currentEvent.job_id # saves job id to identificate them later on Q_k
+                departureEvent.job_id = nextJob_id
                 fel.pushEvent(departureEvent)
+                serviceStartTime[nextJob_id] = server.time
             else:
                 server.busy = False
 
         elif currentEvent.eType == "E":
             break
 
-        lasEventTime = server.time # updates last event time
+        lastEventTime = server.time  # updates last event time
 
-    # Cálculo del largo promedio de la cola
+    # Compute average tail length
     QT = sum(Q_k.values()) 
-    avergeQueueLength = sum(k * Q_k[k] for k in Q_k) / QT
-    # Cálculo del largo teórico de la cola
+    averageQueueLength = sum(k * Q_k[k] for k in Q_k) / QT
+    # Compute theorical tail length 
     theoAvgLenght = theoricalAverageLenght(arrival_rate, service_rate)
 
-    # Cálculo del tiempo promedio de residencia
-    averegaResidenceTime = totalResidenceTime / server.departures
+    # Compute average residence time
+    averegaResidenceTime = totalResidenceTime / server.departures if server.departures > 0 else float('inf')
 
     # Metrics calculation
     print(f"\nNúmero de jobs que llegaron: {server.arrivals}")
@@ -126,9 +132,9 @@ def main():
     print(f"Tiempo total de la cola con largo máximo: {Q_k[fel.maxLength]}")
     print(f"Utilización computada: {1-(timeQueueEmpty/end_time)}")
     print(f"Utilización teórica: {(1/service_rate) / (1 /arrival_rate) }")
-    print(f"Largo promedio computado de la cola: {avergeQueueLength}")
-    print(f"Largo primedio teorico de la cola: {theoAvgLenght}")
-    print(f"Tiempo promedio computado de residencia: {averegaResidenceTime}")   ## failing for now
+    print(f"Largo promedio computado de la cola: {averageQueueLength}")
+    print(f"Largo promedio teórico de la cola: {theoAvgLenght}")
+    print(f"Tiempo promedio computado de residencia: {averegaResidenceTime}") 
     print(f"Tiempo promedio teórico de residencia: {1 / (service_rate - arrival_rate) if service_rate > arrival_rate else float('inf')}")
 
 if __name__ == "__main__":
